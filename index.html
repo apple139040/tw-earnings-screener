@@ -28,7 +28,11 @@ input[type=number], input[type=search] { font: inherit; color: var(--text); back
 input[type=number] { width: 84px; }
 input[type=search] { width: 170px; max-width: 100%; }
 .extra { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); }
-.count { margin: 18px 2px 8px; font-size: 16px; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 18px 2px 8px; }
+.count { margin: 0; font-size: 16px; }
+button { font: inherit; font-weight: 600; color: #fff; background: #1d5fd1; border: 0; border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+button:hover { background: #174ca8; }
+button:disabled { opacity: .5; cursor: default; }
 .count b { font-size: 24px; color: var(--accent); }
 .scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
 table { border-collapse: collapse; width: 100%; min-width: 720px; font-variant-numeric: tabular-nums; }
@@ -78,7 +82,10 @@ td.detail { text-align: left; white-space: normal; padding-top: 2px; position: s
     </div>
   </div>
 
-  <p class="count" id="count"></p>
+  <div class="toolbar">
+    <p class="count" id="count"></p>
+    <button type="button" id="exportXq">下載 XQ 匯入檔</button>
+  </div>
   <div class="scroll">
     <table>
       <thead><tr id="head"></tr></thead>
@@ -140,7 +147,17 @@ function detailRow(r) {
   return parts.length ? `<tr><td class="detail" colspan="${columns.length}"><div>${parts.join('')}</div></td></tr>` : '';
 }
 
-let sortKey = 'revGrowth', sortDesc = true;
+let sortKey = 'revGrowth', sortDesc = true, shown = [];
+
+// XQ 的匯入格式：一行一檔，上市上櫃都加 .TW
+function exportXq() {
+  const text = shown.map(r => `${r.code}.TW`).join('\r\n') + '\r\n';
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+  link.download = `xq-${D.today}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
 
 function matches(r) {
   const word = $('search').value.trim();
@@ -164,6 +181,8 @@ function render() {
   });
   $('head').innerHTML = columns.map(c =>
     `<th data-key="${c.key}" class="${c.key === sortKey ? 'sorted' : ''}">${c.label}${c.key === sortKey ? (sortDesc ? ' ↓' : ' ↑') : ''}</th>`).join('');
+  shown = list;
+  $('exportXq').disabled = list.length === 0;
   const showDetail = $('fDetail').checked;
   $('body').innerHTML = list.map(r => {
     const detail = showDetail ? detailRow(r) : '';
@@ -183,6 +202,7 @@ $('notes').innerHTML = [
   '資料來源：公開資訊觀測站、證交所、櫃買中心。僅供參考，不構成投資建議。',
 ].map(t => `<li>${t}</li>`).join('');
 
+$('exportXq').addEventListener('click', exportXq);
 $('head').addEventListener('click', e => {
   const key = e.target.dataset.key;
   if (!key) return;
