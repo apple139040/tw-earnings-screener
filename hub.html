@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>投資中控台</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --text: #1c2430; --muted: #667085; --line: #e3e6eb;
+  --accent: #1d5fd1; --accent-soft: #e8f0fd;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #11151b; --card: #1a2029; --text: #e6e9ee; --muted: #98a2b3; --line: #2c3440; --accent: #7aa7f5; --accent-soft: #1f2d45; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; display: flex; flex-direction: column; height: 100dvh; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif; }
+header { display: flex; align-items: center; gap: 6px 16px; padding: 8px 16px; background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+h1 { font-size: 17px; margin: 0; white-space: nowrap; }
+nav { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
+nav button { font: inherit; color: var(--muted); background: none; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+nav button:hover { color: var(--text); }
+nav button[aria-selected=true] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+#open { color: var(--accent); font-size: 14px; text-decoration: none; white-space: nowrap; }
+#open:hover { text-decoration: underline; }
+main { flex: 1; min-height: 0; position: relative; }
+iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--card); }
+.local { max-width: 480px; margin: 48px auto; padding: 24px 16px; text-align: center; }
+.local h2 { font-size: 20px; margin: 0 0 8px; }
+.local p { color: var(--muted); margin: 0 0 20px; }
+.local a { display: inline-block; color: #fff; background: #1d5fd1; border-radius: 6px; padding: 9px 18px; font-weight: 600; text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>投資中控台</h1>
+  <nav id="tabs" role="tablist"></nav>
+  <a id="open" target="_blank" rel="noopener">開新分頁 ↗</a>
+</header>
+<main id="panels"></main>
+
+<script>
+const SITES = [
+  { id: 'earnings', name: '季報篩選', url: 'https://apple139040.github.io/tw-earnings-screener/' },
+  { id: 'map', name: '存股地圖', url: 'https://stock-map-internal.apple139040.workers.dev/',
+    note: '瀏覽器不允許這個網站在其他頁面裡登入，所以用新分頁打開。登入一次可以維持 30 天。' },
+  { id: 'research', name: 'AI 個股研究室', url: 'https://applebase-tvxvxjcwnedgudxqsiun3f.streamlit.app/',
+    frame: 'https://applebase-tvxvxjcwnedgudxqsiun3f.streamlit.app/?embed=true' },
+  { id: 'swing', name: '波段交易統計', url: 'http://localhost:8501/',
+    note: '交易資料只存在這台電腦，所以要在這台電腦上、而且統計程式開著時才打得開。' },
+];
+const tabs = document.getElementById('tabs');
+const panels = document.getElementById('panels');
+const open = document.getElementById('open');
+
+// 切換分頁只隱藏不移除，已登入的網站才不會被登出
+function panelFor(site) {
+  let panel = document.getElementById(`panel-${site.id}`);
+  if (panel) return panel;
+  if (site.note) {
+    panel = document.createElement('div');
+    panel.className = 'local';
+    panel.innerHTML = `<h2>${site.name}</h2>
+      <p>${site.note}</p>
+      <a href="${site.url}" target="_blank" rel="noopener">打開${site.name}</a>`;
+  } else {
+    panel = document.createElement('iframe');
+    panel.src = site.frame || site.url;
+    panel.title = site.name;
+  }
+  panel.id = `panel-${site.id}`;
+  panels.append(panel);
+  return panel;
+}
+
+function show(id) {
+  const site = SITES.find(s => s.id === id) || SITES[0];
+  const current = panelFor(site);
+  [...panels.children].forEach(panel => { panel.hidden = panel !== current; });
+  [...tabs.children].forEach(tab => tab.setAttribute('aria-selected', tab.dataset.id === site.id));
+  open.href = site.url;
+  history.replaceState(null, '', `#${site.id}`);
+}
+
+SITES.forEach(site => {
+  const tab = document.createElement('button');
+  tab.type = 'button';
+  tab.role = 'tab';
+  tab.dataset.id = site.id;
+  tab.textContent = site.name;
+  tab.addEventListener('click', () => show(site.id));
+  tabs.append(tab);
+});
+show(location.hash.slice(1));
+</script>
+</body>
+</html>
