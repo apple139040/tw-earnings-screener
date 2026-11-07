@@ -1,0 +1,24 @@
+name: 每日更新財報
+on:
+  schedule:
+    - cron: "0 23 * * *"  # 台灣時間每天早上 7 點
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: update
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python fetch.py ${{ github.event_name == 'workflow_dispatch' && '--force' || '' }}
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898730+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || (git commit -m "更新資料 $(TZ=Asia/Taipei date +%F)" && git push)

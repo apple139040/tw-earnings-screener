@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>季報篩選</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --text: #1c2430; --muted: #667085; --line: #e3e6eb;
+  --up: #d92d20; --down: #12894a; --accent: #1d5fd1; --accent-soft: #e8f0fd; --new: #b54708; --new-soft: #fef0c7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151b; --card: #1a2029; --text: #e6e9ee; --muted: #98a2b3; --line: #2c3440;
+    --up: #ff6b5e; --down: #4cc38a; --accent: #7aa7f5; --accent-soft: #1f2d45; --new: #fdb022; --new-soft: #3d2f12;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.filters label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); margin: 0; }
+input[type=number], input[type=search] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+input[type=number] { width: 84px; }
+input[type=search] { width: 170px; max-width: 100%; }
+.extra { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); }
+.count { margin: 18px 2px 8px; font-size: 16px; }
+.count b { font-size: 24px; color: var(--accent); }
+.scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+th { font-size: 13px; color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; background: var(--card); }
+th:hover { color: var(--text); }
+th.sorted { color: var(--accent); }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--card); }
+td a { color: var(--text); font-weight: 600; text-decoration: none; }
+td a:hover { color: var(--accent); }
+.code { color: var(--muted); font-size: 12px; margin-right: 6px; }
+.tag { font-size: 11px; font-weight: 700; color: var(--new); background: var(--new-soft); border-radius: 4px; padding: 1px 5px; margin-left: 6px; }
+.small { display: block; color: var(--muted); font-size: 12px; }
+.up { color: var(--up); } .down { color: var(--down); }
+tr.main td { border-bottom: 0; padding-bottom: 4px; }
+td.detail { text-align: left; white-space: normal; padding-top: 2px; position: static; font-size: 13.5px; }
+.detail > div { position: sticky; left: 12px; max-width: min(960px, calc(100vw - 58px)); }
+.detail p { margin: 0 0 4px; }
+.detail b { color: var(--muted); font-weight: 600; margin-right: 6px; }
+.detail a { font-weight: 400; color: var(--accent); }
+.detail a:hover { text-decoration: underline; }
+.detail .src { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.detail ul { margin: 0; padding: 0; list-style: none; }
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+.notes { color: var(--muted); font-size: 13px; margin-top: 18px; }
+.notes li { margin-bottom: 3px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>季報篩選</h1>
+  <p class="sub" id="status"></p>
+
+  <div class="panel">
+    <div class="filters">
+      <label><input type="checkbox" id="fGm" checked> 毛利率 &gt; 上一季</label>
+      <label><input type="checkbox" id="fOm" checked> 營業利益率 &gt; 上一季</label>
+      <label><input type="checkbox" id="fRev" checked> 營收 &gt; 上一季</label>
+      <label><input type="checkbox" id="fVol" checked> 月均量 &gt; <input type="number" id="volMin" value="1000" min="0" step="100"> 張</label>
+    </div>
+    <div class="filters extra">
+      <label><input type="checkbox" id="fProfit"> 只看本業賺錢（營業利益率 &gt; 0）</label>
+      <label><input type="checkbox" id="fNew"> 只看最新公布</label>
+      <label><input type="checkbox" id="fDetail" checked> 顯示公司介紹</label>
+      <input type="search" id="search" placeholder="搜尋代號或名稱" aria-label="搜尋代號或名稱">
+    </div>
+  </div>
+
+  <p class="count" id="count"></p>
+  <div class="scroll">
+    <table>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>沒有符合條件的股票</div>
+  </div>
+
+  <ul class="notes" id="notes"></ul>
+</main>
+
+<script src="data/result.js"></script>
+<script>
+const D = window.DATA;
+const $ = id => document.getElementById(id);
+const pct = (now, before) => before > 0 && now != null ? (now / before - 1) * 100 : null;
+const rows = D.rows.map(r => ({
+  ...r,
+  revGrowth: pct(r.rev, r.revPrev),
+  gmDiff: r.gm != null && r.gmPrev != null ? r.gm - r.gmPrev : null,
+  omDiff: r.om != null && r.omPrev != null ? r.om - r.omPrev : null,
+  isNew: r.filed === D.today,
+}));
+
+const columns = [
+  { key: 'code', label: '股票', sort: r => r.code, cell: r =>
+      `<span class="code">${r.code}</span><a href="https://tw.stock.yahoo.com/quote/${r.code}" target="_blank" rel="noopener">${r.name}</a>${r.isNew ? '<span class="tag">新</span>' : ''}<span class="small">${r.market}</span>` },
+  { key: 'rev', label: '單季營收（億）', sort: r => r.rev, cell: r =>
+      `${fmt(r.rev / 1e5, 2)}<span class="small">上季 ${fmt(r.revPrev / 1e5, 2)}</span>` },
+  { key: 'revGrowth', label: '營收季增', sort: r => r.revGrowth, cell: r => signed(r.revGrowth, '%') },
+  { key: 'gm', label: '毛利率', sort: r => r.gm, cell: r =>
+      `${fmt(r.gm, 2, '%')}<span class="small">上季 ${fmt(r.gmPrev, 2, '%')}</span>` },
+  { key: 'gmDiff', label: '毛利率變化', sort: r => r.gmDiff, cell: r => signed(r.gmDiff, '') },
+  { key: 'om', label: '營益率', sort: r => r.om, cell: r =>
+      `${fmt(r.om, 2, '%')}<span class="small">上季 ${fmt(r.omPrev, 2, '%')}</span>` },
+  { key: 'omDiff', label: '營益率變化', sort: r => r.omDiff, cell: r => signed(r.omDiff, '') },
+  { key: 'vol', label: '月均量（張）', sort: r => r.vol, cell: r => fmt(r.vol, 0) },
+];
+
+function fmt(value, digits, unit = '') {
+  if (value == null || Number.isNaN(value)) return '—';
+  return value.toLocaleString('zh-TW', { minimumFractionDigits: digits, maximumFractionDigits: digits }) + unit;
+}
+function signed(value, unit) {
+  if (value == null) return '—';
+  const text = (value > 0 ? '+' : '') + fmt(value, 2, unit);
+  return `<span class="${value > 0 ? 'up' : value < 0 ? 'down' : ''}">${text}</span>`;
+}
+
+function escapeHtml(text) {
+  return text.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+function detailRow(r) {
+  const parts = [];
+  if (r.biz) parts.push(`<p><b>在做什麼</b>${escapeHtml(r.biz)}</p>`);
+  if (r.why) parts.push(`<p><b>財報亮點</b>${escapeHtml(r.why)}</p>`);
+  if (r.news && r.news.length) parts.push(`<p><b>相關新聞</b></p><ul>${r.news.map(n =>
+    `<li><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a><span class="src">${escapeHtml(n.source)} ${n.date.slice(5)}</span></li>`).join('')}</ul>`);
+  return parts.length ? `<tr><td class="detail" colspan="${columns.length}"><div>${parts.join('')}</div></td></tr>` : '';
+}
+
+let sortKey = 'revGrowth', sortDesc = true;
+
+function matches(r) {
+  const word = $('search').value.trim();
+  if (word && !r.code.includes(word) && !r.name.includes(word)) return false;
+  if ($('fGm').checked && !(r.gmDiff > 0)) return false;
+  if ($('fOm').checked && !(r.omDiff > 0)) return false;
+  if ($('fRev').checked && !(r.rev > r.revPrev)) return false;
+  if ($('fVol').checked && !(r.vol > Number($('volMin').value))) return false;
+  if ($('fProfit').checked && !(r.om > 0)) return false;
+  if ($('fNew').checked && !r.isNew) return false;
+  return true;
+}
+
+function render() {
+  const column = columns.find(c => c.key === sortKey);
+  const list = rows.filter(matches).sort((a, b) => {
+    const x = column.sort(a), y = column.sort(b);
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x < y ? -1 : x > y ? 1 : 0) * (sortDesc ? -1 : 1);
+  });
+  $('head').innerHTML = columns.map(c =>
+    `<th data-key="${c.key}" class="${c.key === sortKey ? 'sorted' : ''}">${c.label}${c.key === sortKey ? (sortDesc ? ' ↓' : ' ↑') : ''}</th>`).join('');
+  const showDetail = $('fDetail').checked;
+  $('body').innerHTML = list.map(r => {
+    const detail = showDetail ? detailRow(r) : '';
+    return `<tr class="${detail ? 'main' : ''}">${columns.map(c => `<td>${c.cell(r)}</td>`).join('')}</tr>${detail}`;
+  }).join('');
+  $('empty').hidden = list.length > 0;
+  $('count').innerHTML = `符合條件 <b>${list.length}</b> 檔（可比較的 ${rows.length.toLocaleString()} 檔中）`;
+}
+
+$('status').textContent = `${D.quarter} vs ${D.prevQuarter}｜已公布 ${D.filed.toLocaleString()} / ${D.total.toLocaleString()} 家｜更新於 ${D.updated}`;
+$('notes').innerHTML = [
+  '營收、毛利率、營業利益率都是單季數字（由累計財報換算），合併報表，單位億元。',
+  `月均量是最近 ${D.volumeDays} 個交易日（${D.volumeFrom} 到 ${D.volumeTo}）的每日平均成交張數。`,
+  '只含上市、上櫃的一般公司。銀行、保險、證券等金融業沒有毛利率，不列入。',
+  '「新」表示最近一次更新才出現的財報。點股票名稱可開 Yahoo 股市。',
+  '「在做什麼」取自公開資訊觀測站。「財報亮點」由財報數字自動算出，只說明數字變化。「相關新聞」由 Google 新聞自動挑選，內容未經查證。',
+  '資料來源：公開資訊觀測站、證交所、櫃買中心。僅供參考，不構成投資建議。',
+].map(t => `<li>${t}</li>`).join('');
+
+$('head').addEventListener('click', e => {
+  const key = e.target.dataset.key;
+  if (!key) return;
+  sortDesc = key === sortKey ? !sortDesc : key !== 'code';
+  sortKey = key;
+  render();
+});
+document.querySelectorAll('input').forEach(el => el.addEventListener('input', render));
+render();
+</script>
+</body>
+</html>
